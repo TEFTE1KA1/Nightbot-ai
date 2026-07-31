@@ -20,14 +20,20 @@ app.get('/ask', async (req, res) => {
         });
 
         const data = await response.json();
-        let aiText = data?.[0]?.generated_text || data?.generated_text || "";
+        let aiText = "";
         
+        if (Array.isArray(data) && data[0]?.generated_text) {
+            aiText = data[0].generated_text;
+        } else if (data?.generated_text) {
+            aiText = data.generated_text;
+        }
+
         if (aiText.includes("[INST]")) {
             const parts = aiText.split("[/INST]");
             aiText = parts[parts.length - 1];
         }
         
-        res.send(aiText.trim() || "Не удалось получить ответ от ИИ.");
+        res.send(aiText.trim() || "Не удалось получить ответ.");
     } catch (e) {
         res.send("ИИ временно недоступен.");
     }
