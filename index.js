@@ -8,27 +8,28 @@ app.get('/ask', async (req, res) => {
 
     try {
         const response = await fetch("https://huggingface.co", {
-           , {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${process.env.HF_API_KEY}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                inputs: `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\nТы ИИ-помощник стримера. Отвечай кратко на русском языке до 200 символов.<|eot_id|><|start_header_id|>user<|end_header_id|>\n${userMessage}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n`,
-                parameters: { max_new_tokens: 60 }
+                inputs: `<s>[INST] Ты ИИ-помощник стримера. Отвечай очень кратко на русском языке до 150 символов. Вопрос: ${userMessage} [/INST]`,
+                parameters: { max_new_tokens: 50 }
             })
         });
 
         const data = await response.json();
-        let aiText = data?.generated_text || "";
-        if (aiText.includes("assistant")) {
-            const parts = aiText.split("assistant");
+        let aiText = data?.[0]?.generated_text || data?.generated_text || "";
+        
+        if (aiText.includes("[INST]")) {
+            const parts = aiText.split("[/INST]");
             aiText = parts[parts.length - 1];
         }
-        res.send(aiText.replace(/[<>|]/g, "").trim() || "Ошибка ИИ");
+        
+        res.send(aiText.trim() || "Не удалось получить ответ от ИИ.");
     } catch (e) {
-        res.send("ИИ временно недоступен");
+        res.send("ИИ временно недоступен.");
     }
 });
 
