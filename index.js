@@ -28,4 +28,4 @@ app.get('/ask', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`Сервер запущен`));
+app.listen(PORT, () => { console.log('Сервер запущен'); });
