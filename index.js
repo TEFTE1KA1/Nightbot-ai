@@ -1,31 +1,36 @@
 const express = require('express');
-const { OpenAI } = require('openai');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.get('/ask', async (req, res) => {
     const userMessage = req.query.msg; 
-
-    if (!userMessage) {
-        return res.send('Задай вопрос! Пример: !ai привет');
-    }
+    if (!userMessage) return res.send('Задай вопрос! Пример: !ai привет');
 
     try {
-        const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini", 
-            messages: [
-                { role: "system", content: "Ты — краткий ИИ-помощник в чате стримера. Отвечай строго до 250 символов, емко." },
-                { role: "user", content: userMessage }
-            ],
-            max_tokens: 80
+        const response = await fetch("https://huggingface.co", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${process.env.HF_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                inputs: `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\nТы ИИ-помощник стримера. Отвечай кратко на русском языке до 200 символов.<|eot_id|><|start_header_id|>user<|end_header_id|>\n${userMessage}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n`,
+                parameters: { max_new_tokens: 60 }
+            })
         });
 
-        res.send(response.choices.message.content.trim());
-    } catch (error) {
-        res.send('Ошибка ИИ. Проверьте настройки ключа.');
+        const data = await response.json();
+        let aiText = data?.generated_text || "";
+        if (aiText.includes("assistant")) {
+            const parts = aiText.split("assistant");
+            aiText = parts[parts.length - 1];
+        }
+        res.send(aiText.replace(/[<>|]/g, "").trim() || "Ошибка ИИ");
+    } catch (e) {
+        res.send("ИИ временно недоступен");
     }
 });
 
-app.listen(PORT, () => { console.log('Сервер запущен'); });
+app.listen(PORT, () => {
+    console.log("Server is running");
+});
