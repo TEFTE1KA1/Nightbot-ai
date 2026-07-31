@@ -8,6 +8,7 @@ app.get('/ask', async (req, res) => {
 
     try {
         const response = await fetch("https://huggingface.co", {
+           , {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${process.env.HF_API_KEY}`,
