@@ -7,18 +7,20 @@ app.get('/ask', async (req, res) => {
     if (!userMessage) return res.send('Задай вопрос! Пример: !ai привет');
 
     try {
-        // Делаем прямой запрос к открытому и бесплатному AI-мосту (модель Llama 3)
-        const response = await fetch(`https://lolhuman.xyz{encodeURIComponent(userMessage)}`);
-        let aiText = await response.text();
+        // Запрос к бесплатному зеркалу Google Gemini
+        const response = await fetch(`https://open-api.xyz{encodeURIComponent(userMessage)}`);
+        const data = await response.json();
+        
+        let aiText = data?.result || data?.response || JSON.stringify(data);
 
-        // Ограничиваем длину ответа до 300 символов, чтобы Nightbot его не заблокировал
+        // Обрезаем до 300 символов, чтобы уложиться в лимиты Найтбота
         if (aiText.length > 300) {
             aiText = aiText.substring(0, 297) + "...";
         }
 
         res.send(aiText.trim() || "Не удалось получить ответ.");
     } catch (e) {
-        res.send("ИИ временно перегружен, попробуй еще раз!");
+        res.send("ИИ задумался, повтори вопрос через 5 секунд!");
     }
 });
 
