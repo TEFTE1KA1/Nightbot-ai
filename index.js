@@ -1,13 +1,12 @@
 const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 app.get('/ask', async (req, res) => {
     const userMessage = req.query.msg; 
     if (!userMessage) return res.send('Задай вопрос! Пример: !ai привет');
 
     try {
-        // Делаем запрос к модели Qwen через ваш личный ключ HF_API_KEY
+        // Делаем запрос к официальной бесплатной модели Qwen через быстрый публичный шлюз
         const response = await fetch("https://huggingface.co", {
             method: "POST",
             headers: {
@@ -20,24 +19,11 @@ app.get('/ask', async (req, res) => {
             })
         });
 
-        // Если сервер Hugging Face вернул ошибку, выводим её статус
-        if (!response.ok) {
-            const errText = await response.text();
-            return res.send(`Ошибка ИИ-сервера (${response.status}): ${errText.substring(0, 100)}`);
-        }
-
         const data = await response.json();
-        let aiText = "";
+        let aiText = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text;
+        
+        if (!aiText) aiText = JSON.stringify(data);
 
-        if (Array.isArray(data) && data[0]?.generated_text) {
-            aiText = data[0].generated_text;
-        } else if (data?.generated_text) {
-            aiText = data.generated_text;
-        } else {
-            aiText = JSON.stringify(data);
-        }
-
-        // Очищаем ответ от системных тегов модели
         if (aiText.includes("assistant")) {
             const parts = aiText.split("assistant");
             aiText = parts[parts.length - 1];
@@ -45,10 +31,8 @@ app.get('/ask', async (req, res) => {
 
         res.send(aiText.replace(/[<>|]/g, "").trim() || "Пустой ответ.");
     } catch (e) {
-        res.send("Внутренний сбой: " + e.message);
+        res.send("Ошибка: " + e.message);
     }
 });
 
-app.listen(PORT, () => {
-    console.log("Server is running");
-});
+module.exports = app;
