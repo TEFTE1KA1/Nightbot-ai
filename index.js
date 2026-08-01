@@ -14,28 +14,17 @@ app.get('/ask', async (req, res) => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                inputs: `<s>[INST] Ты ИИ-помощник стримера. Отвечай очень кратко на русском языке до 150 символов. Вопрос: ${userMessage} [/INST]`,
-                parameters: { max_new_tokens: 50 }
+                inputs: userMessage,
+                parameters: { max_new_tokens: 40 }
             })
         });
 
         const data = await response.json();
-        let aiText = "";
         
-        if (Array.isArray(data) && data[0]?.generated_text) {
-            aiText = data[0].generated_text;
-        } else if (data?.generated_text) {
-            aiText = data.generated_text;
-        }
-
-        if (aiText.includes("[INST]")) {
-            const parts = aiText.split("[/INST]");
-            aiText = parts[parts.length - 1];
-        }
-        
-        res.send(aiText.trim() || "Не удалось получить ответ.");
+        // Отправляем на экран всё, что прислал Hugging Face, без фильтров
+        res.send(JSON.stringify(data));
     } catch (e) {
-        res.send("ИИ временно недоступен.");
+        res.send("Сбой сети сервера: " + e.message);
     }
 });
 
