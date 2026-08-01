@@ -19,12 +19,27 @@ app.get('/ask', async (req, res) => {
             })
         });
 
+        // Если Hugging Face вернул ошибку сервера, выводим её текст напрямую
+        if (!response.ok) {
+            const errorText = await response.text();
+            return res.send(`Ошибка Hugging Face (${response.status}): ${errorText}`);
+        }
+
         const data = await response.json();
         
-        // Отправляем на экран всё, что прислал Hugging Face, без фильтров
-        res.send(JSON.stringify(data));
+        // Извлекаем чистый текст ответа
+        let aiText = "";
+        if (Array.isArray(data) && data[0]?.generated_text) {
+            aiText = data[0].generated_text;
+        } else if (data?.generated_text) {
+            aiText = data.generated_text;
+        } else {
+            aiText = JSON.stringify(data);
+        }
+
+        res.send(aiText.trim() || "Пустой ответ от ИИ.");
     } catch (e) {
-        res.send("Сбой сети сервера: " + e.message);
+        res.send("Внутренняя ошибка сервера: " + e.message);
     }
 });
 
