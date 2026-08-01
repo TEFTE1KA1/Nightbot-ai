@@ -7,26 +7,45 @@ app.get('/ask', async (req, res) => {
     if (!userMessage) return res.send('Задай вопрос! Пример: !ai привет');
 
     try {
-        // Запрос к бесплатному и открытому API Llama-3, который никогда не блокируется
-        const response = await fetch("https://chateverywhere.app", {
+        // Делаем запрос к модели Qwen через ваш личный ключ HF_API_KEY
+        const response = await fetch("https://huggingface.co", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Authorization": `Bearer ${process.env.HF_API_KEY}`,
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
-                model: "llama3",
-                messages: [{ role: "user", content: `Ответь строго на русском языке, очень кратко, до 150 символов: ${userMessage}` }]
+                inputs: `<|im_start|>system\nТы краткий ИИ-помощник в чате. Отвечай строго на русском языке и очень кратко, до 150 символов.<|im_end|>\n<|im_start|>user\n${userMessage}<|im_end|>\n<|im_start|>assistant\n`,
+                parameters: { max_new_tokens: 50, stop: ["<|im_end|>"] }
             })
         });
 
-        const data = await response.json();
-        let aiText = data?.choices?.[0]?.message?.content || data?.content || "";
-
-        if (aiText.length > 300) {
-            aiText = aiText.substring(0, 297) + "...";
+        // Если сервер Hugging Face вернул ошибку, выводим её статус
+        if (!response.ok) {
+            const errText = await response.text();
+            return res.send(`Ошибка ИИ-сервера (${response.status}): ${errText.substring(0, 100)}`);
         }
 
-        res.send(aiText.trim() || "ИИ прислал пустой ответ.");
+        const data = await response.json();
+        let aiText = "";
+
+        if (Array.isArray(data) && data[0]?.generated_text) {
+            aiText = data[0].generated_text;
+        } else if (data?.generated_text) {
+            aiText = data.generated_text;
+        } else {
+            aiText = JSON.stringify(data);
+        }
+
+        // Очищаем ответ от системных тегов модели
+        if (aiText.includes("assistant")) {
+            const parts = aiText.split("assistant");
+            aiText = parts[parts.length - 1];
+        }
+
+        res.send(aiText.replace(/[<>|]/g, "").trim() || "Пустой ответ.");
     } catch (e) {
-        res.send("Сбой сети ИИ. Попробуй еще раз.");
+        res.send("Внутренний сбой: " + e.message);
     }
 });
 
