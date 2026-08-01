@@ -7,20 +7,26 @@ app.get('/ask', async (req, res) => {
     if (!userMessage) return res.send('Задай вопрос! Пример: !ai привет');
 
     try {
-        // Запрос к бесплатному зеркалу Google Gemini
-        const response = await fetch(`https://open-api.xyz{encodeURIComponent(userMessage)}`);
-        const data = await response.json();
-        
-        let aiText = data?.result || data?.response || JSON.stringify(data);
+        // Запрос к бесплатному и открытому API Llama-3, который никогда не блокируется
+        const response = await fetch("https://chateverywhere.app", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                model: "llama3",
+                messages: [{ role: "user", content: `Ответь строго на русском языке, очень кратко, до 150 символов: ${userMessage}` }]
+            })
+        });
 
-        // Обрезаем до 300 символов, чтобы уложиться в лимиты Найтбота
+        const data = await response.json();
+        let aiText = data?.choices?.[0]?.message?.content || data?.content || "";
+
         if (aiText.length > 300) {
             aiText = aiText.substring(0, 297) + "...";
         }
 
-        res.send(aiText.trim() || "Не удалось получить ответ.");
+        res.send(aiText.trim() || "ИИ прислал пустой ответ.");
     } catch (e) {
-        res.send("ИИ задумался, повтори вопрос через 5 секунд!");
+        res.send("Сбой сети ИИ. Попробуй еще раз.");
     }
 });
 
