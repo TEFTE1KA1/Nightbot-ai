@@ -7,39 +7,48 @@ app.get('/ask', async (req, res) => {
     if (!userMessage) return res.send('Задай вопрос! Пример: !ai привет');
 
     try {
-        const response = await fetch("https://huggingface.co", {
+        // Step 1: Получаем обязательный внутренний токен от DuckDuckGo
+        const initRes = await fetch("https://duckduckgo.com", {
+            headers: { "x-vqd-accept": "1" }
+        });
+        const vqd = initRes.headers.get("x-vqd-token");
+
+        if (!vqd) return res.send("Ошибка инициализации чата.");
+
+        // Step 2: Отправляем запрос к ИИ
+        const response = await fetch("https://duckduckgo.com", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${process.env.HF_API_KEY}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "x-vqd-token": vqd
             },
             body: JSON.stringify({
-                inputs: userMessage,
-                parameters: { max_new_tokens: 40 }
+                model: "meta-llama/Meta-Llama-3-70B-Instruct-Turbo",
+                messages: [
+                    { role: "user", content: `Ответь на русском языке, очень кратко (до 150 символов). Вопрос: ${userMessage}` }
+                ]
             })
         });
 
-        // Если Hugging Face вернул ошибку сервера, выводим её текст напрямую
-        if (!response.ok) {
-            const errorText = await response.text();
-            return res.send(`Ошибка Hugging Face (${response.status}): ${errorText}`);
-        }
-
-        const data = await response.json();
+        const textData = await response.text();
         
-        // Извлекаем чистый текст ответа
-        let aiText = "";
-        if (Array.isArray(data) && data[0]?.generated_text) {
-            aiText = data[0].generated_text;
-        } else if (data?.generated_text) {
-            aiText = data.generated_text;
-        } else {
-            aiText = JSON.stringify(data);
+        // Разбираем потоковый текст ответа DuckDuckGo
+        const lines = textData.split('\n');
+        let aiAnswer = "";
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const chunk = line.slice(6).trim();
+                if (chunk === '[DONE]') break;
+                try {
+                    const parsed = JSON.parse(chunk);
+                    if (parsed.message) aiAnswer += parsed.message;
+                } catch (e) {}
+            }
         }
 
-        res.send(aiText.trim() || "Пустой ответ от ИИ.");
+        res.send(aiAnswer.trim() || "Не удалось разобрать ответ.");
     } catch (e) {
-        res.send("Внутренняя ошибка сервера: " + e.message);
+        res.send("Ошибка подключения к ИИ: " + e.message);
     }
 });
 
