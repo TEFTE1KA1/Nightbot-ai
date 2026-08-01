@@ -1,12 +1,7 @@
 {
-  "name": "nightbot-free-ai",
+  "name": "nightbot-vercel-ai",
   "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
   "dependencies": {
-    "express": "^4.19.2",
-    "undici": "^6.19.2"
+    "express": "^4.19.2"
   }
 }
