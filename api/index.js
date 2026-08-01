@@ -28,8 +28,12 @@ module.exports = async (req, res) => {
         }
 
         const data = await response.json();
-        // Исправлено: извлекаем текст из первого элемента массива ответов [0]
-        let aiText = data.choices?.[0]?.message?.content || "Нейросеть прислала пустой ответ.";
+        
+        // Безопасное извлечение текста без двойных знаков ?.
+        let aiText = "Нейросеть прислала пустой ответ.";
+        if (data && data.choices && data.choices[0] && data.choices[0].message) {
+            aiText = data.choices[0].message.content || aiText;
+        }
 
         if (aiText.length > 250) {
             aiText = aiText.substring(0, 247) + "...";
