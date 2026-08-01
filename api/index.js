@@ -1,11 +1,16 @@
 module.exports = async (req, res) => {
+    // Настройка заголовков для обхода CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
 
     const userMessage = req.query.msg;
-    if (!userMessage) return res.send('Задай вопрос! Пример: !ai привет');
+    if (!userMessage) {
+        return res.send('Задай вопрос! Пример: !ai привет');
+    }
 
     try {
         const response = await fetch("https://openrouter.ai", {
@@ -24,23 +29,33 @@ module.exports = async (req, res) => {
         });
 
         if (!response.ok) {
-            return res.send(`Ошибка ИИ: Статус ${response.status}`);
+            return res.send("Ошибка ИИ: Статус " + response.status);
         }
 
         const data = await response.json();
         
-        // Безопасное извлечение текста без двойных знаков ?.
+        // Самый простой и надежный парсинг ответа без использования синтаксиса знаков вопроса
         let aiText = "Нейросеть прислала пустой ответ.";
-        if (data && data.choices && data.choices[0] && data.choices[0].message) {
-            aiText = data.choices[0].message.content || aiText;
+        
+        if (data.choices) {
+            if (data.choices[0]) {
+                if (data.choices[0].message) {
+                    if (data.choices[0].message.content) {
+                        aiText = data.choices[0].message.content;
+                    }
+                }
+            }
         }
 
+        // Обрезаем длинный ответ под жесткие рамки Nightbot
         if (aiText.length > 250) {
             aiText = aiText.substring(0, 247) + "...";
         }
 
         return res.send(aiText.trim());
+
     } catch (e) {
-        return res.send(`Ошибка скрипта: ${e.message}`);
+        // Если что-то упадет внутри блока, мы сразу увидим текст ошибки, а не DOCTYPE
+        return res.send("Ошибка скрипта: " + e.message);
     }
 };
