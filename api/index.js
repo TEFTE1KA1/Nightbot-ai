@@ -28,6 +28,7 @@ module.exports = async (req, res) => {
         }
 
         const data = await response.json();
+        // Исправлено: извлекаем текст из первого элемента массива ответов [0]
         let aiText = data.choices?.[0]?.message?.content || "Нейросеть прислала пустой ответ.";
 
         if (aiText.length > 250) {
